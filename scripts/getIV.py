@@ -730,6 +730,10 @@ def Option_Parser(argv):
             type='str', dest='batch', default=PROGRAM_ACTIVATE_TIME.strftime('%Y%m%d-%H%M%S'),
             help='Time stamp to start a batch of IV scan. The format would be YYYYMMDD-HHMMSS'
     )
+    parser.add_option('-r', '--inspector',
+            type='str', dest='inspector', default='no user',
+            help='inspector name for this IV scan'
+    )
     parser.add_option('-v', '--max_voltage',
                       type='int', dest='max_voltage', default=500,
                       help='absolute maximum voltage for this thermal cycle. '
@@ -755,7 +759,6 @@ DBDatabase: 'hgcdb'
 DBHostname: '192.168.50.213'
 DBPassword: ''
 DBUsername: 'postgres'
-inspector: NTULab
     '''
     def __init__(self,confFILE):
         with open(confFILE, 'r') as fin:
@@ -765,7 +768,6 @@ inspector: NTULab
         self.DBPassword = conf['DBPassword']
         self.DBUsername = conf['DBUsername']
 
-        self.inspector = conf['inspector']
         self.resource = conf['MMTS_hardwares']['keithley']['Resource']
 
         
@@ -873,7 +875,7 @@ def testfunc_put_something_to_DB_AND_skip_keithley():
         'date_test'        : PROGRAM_ACTIVATE_TIME.date().strftime("%Y-%m-%d"),
         'time_test'        : PROGRAM_ACTIVATE_TIME.time().strftime("%H:%M:%S"),
         'datetime_utc'     : str(PROGRAM_ACTIVATE_TIME.astimezone(timezone.utc)),
-        'inspector'        : conf.inspector,
+        'inspector'        : options.inspector,
         'program_v'        : [],
         'meas_v'           : [],
         'meas_i'           : [],
@@ -964,7 +966,7 @@ def mainfunc():
         'date_test'        : PROGRAM_ACTIVATE_TIME.date().strftime("%Y-%m-%d"),
         'time_test'        : PROGRAM_ACTIVATE_TIME.time().strftime("%H:%M:%S"),
         'datetime_utc'     : str(PROGRAM_ACTIVATE_TIME.astimezone(timezone.utc)),
-        'inspector'        : conf.inspector,
+        'inspector'        : options.inspector,
         'program_v'        : program_v,
         'meas_v'           : voltage,
         'meas_i'           : current,
