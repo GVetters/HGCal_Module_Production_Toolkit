@@ -51,6 +51,10 @@ class Keithley2410(Keithley2400):
 
         # Sets up to measure current
         self.measure_current(current=COMPLIANCE_CURRENT_UPPERLIMIT, auto_range=False)
+        self.write(":SENS:FUNC:CONC ON")
+        self.write(":SENS:FUNC:ON 'VOLT:DC'")
+        self.write(":SENS:VOLT:RANG:AUTO ON")
+        self.write(":FORM:ELEM VOLT,CURR,RES,TIME,STAT")
 
     def _is_larger_than_current_voltage(self, voltage:float) -> bool:
 
@@ -116,6 +120,22 @@ class Keithley2410(Keithley2400):
 
             return target_voltage, self.current
 
+    def countdown_sleep(self, seconds):
+        """Sleeps for a given number of seconds while displaying a live countdown."""
+        index = 0
+        for i in range(seconds, 0, -1):
+            # \r moves the cursor to the start of the line
+            # end="" prevents moving to a new line
+            # flush=True forces the console to display the output immediately
+            #print(f"\r] Time remaining: {i} seconds", end="", flush=True)
+            if index % 300 == 0: 
+                print(f"\r] Time remaining: {i} seconds or {i/60.0} min", end="", flush=True)
+            time.sleep(1)
+            index += 1
+        
+        # Clear the countdown line or print a final message
+        print("\rTime's up! IV complete.       ")
+
     def iv_scan(self, final_voltage:float, initial_voltage:float = 0.) -> tuple[np.array, np.array, np.array, np.array]:
 
         """
@@ -146,10 +166,18 @@ class Keithley2410(Keithley2400):
 
             self.source_voltage = voltage
 
-            time.sleep(2)
+            if i_step == len(voltages) - 1:
+                # self.countdown_sleep(int(3600*1))
+                # self.countdown_sleep(int(3600*2))
+                # self.countdown_sleep(int(3600*3))
+                self.countdown_sleep(int(1))
+            else:
+                time.sleep(2)
 
-            current = self.current
-            measure_v = self.voltage
+            values = self.values(":READ?")
+            measure_v = values[0]   # VOLT  (index 0 per FORM:ELEM VOLT,CURR,RES,TIME,STAT)
+            current   = values[1]
+
 
             log.info(f'[Recorded value] i_step{i_step:2d} sourceV:{voltage} measure_V:{measure_v} measure_I:{current}')
 
@@ -212,6 +240,10 @@ def Option_Parser(argv):
                       help='absolute maximum voltage for this thermal cycle. '
                            '(modify "MMTS_hardwares/keithley/WiresPolarization=Reverse" in configuration.yaml for negative voltage")')
 
+    parser.add_option('-s', '--station',
+            type='str', dest='station', default='MMTS',
+            help='Station name logged to the database (default: MMTS)'
+            )
     parser.add_option('-i', dest='initialize', action='store_true', help='initialize step. Check hardware connection and other requirement')
     (options, args) = parser.parse_args(argv)
     return options
@@ -344,6 +376,7 @@ def mainfunc():
         'meas_r'           : resistance,
         'status'           : 8,
         'status_desc'      : 'Bolted',
+        'station_name'     : options.station,
         'comment'          : externalMESSAGE,
     }
 
